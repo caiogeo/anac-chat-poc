@@ -93,7 +93,7 @@
     const EMBED = !!qs.get("embed");
     const PERGUNTAS_CURTAS = [
       "Nome e ação dos 5 primeiros da fila",
-      "Quantos saíram da fila por imagem?",
+      "Quantos saíram por imagem e quantos dias evitados?",
       "Amazonas: quais pedem imagem?",
       "Nome dos de acesso difícil há mais de 3 anos sem vistoria",
       "Leve o mapa até Fonte Boa"
@@ -135,7 +135,7 @@
       chat.setAttribute("reference-element", "#mapa");
       chat.setAttribute("copy-enabled", "");
       chat.heading = "Pergunte à fila";   // sem título o componente escreve "Assistente"
-      if (!EMBED) chat.description = "Pergunte sobre a fila de fiscalização: prioridade, motivo, dias sem vistoria, equipes e vistorias.";
+      if (!EMBED) chat.description = "Pergunte sobre a fila de fiscalização: posição, ação, prioridade, ICP, acesso e dias sem vistoria.";
       // dentro do app a faixa de cima já avisa que os dados são fictícios; a mensagem de boas-vindas tomaria a altura da caixa de digitar
       if (!EMBED) chat.entryMessage = "Olá! Posso consultar a fila de fiscalização e levar o mapa a um aeródromo. ICP, prioridade e " +
         "vistorias desta demonstração são fictícios.";
