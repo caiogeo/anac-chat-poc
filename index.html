@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pergunte à fila · POC ANAC</title>
+  <!--
+    POC ANAC Pistas (Imagem Geosistemas), capítulo 1 A fila: chat com IA sobre o web map da fila, componente arcgis-assistant.
+    ?embed=1: sem o cabeçalho, para entrar no Experience Builder (widget Embed). Sem appId, o login é o formulário do SDK.
+    Componente
+    (ArcGIS Maps SDK for JavaScript, AI components em beta). Base: exemplo oficial "AI Assistant component (beta)",
+    https://developers.arcgis.com/javascript/latest/sample-code/ai-assistant/ (acesso em 02/10/2026).
+    Requisitos (FAQ Esri): usuário nomeado de organização ArcGIS Online logado, AI assistants ligado, apps beta não
+    bloqueados, web map com embeddings. Configuração do servidor em config.js (modelo: config.exemplo.js).
+  -->
+  <script src="config.js" onerror="window.CHAT_CONFIG = window.CHAT_CONFIG || {}"></script>
+  <script type="module" src="https://js.arcgis.com/5.1/"></script>
+  <style>
+    :root { --azul: #1351b4; --marinho: #071d41; --fundo: #f8f8f8; --texto: #1b1b1b; }
+    html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--texto);
+      font-family: Rawline, Raleway, "Segoe UI", sans-serif; }
+    calcite-shell { height: 100%; }
+    .topo { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: #fff;
+      border-bottom: 3px solid var(--azul); }
+    .topo h1 { margin: 0; font-size: 18px; color: var(--marinho); }
+    .topo p { margin: 0; font-size: 12px; color: var(--azul); }
+    .faixa { background: #c9302c; color: #fff; font-size: 13px; text-align: center; padding: 4px 12px; }
+    #mapa { width: 100%; height: 100%; }
+    #aviso-login { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(7, 29, 65, .75); z-index: 10; }
+    #aviso-login div { background: #fff; max-width: 460px; padding: 24px; border-top: 4px solid var(--azul); }
+    #aviso-login h2 { margin-top: 0; color: var(--marinho); font-size: 18px; }
+    /* sem appId, o SDK abre o próprio formulário de login, que ficava atrás do calcite-shell */
+    .esri-identity-modal:has(calcite-dialog[open]) { position: fixed; inset: 0; z-index: 1000; }
+    @media (max-width: 760px) { .topo p { display: none; } }
+    body.embed .topo { display: none; }
+    body.embed .faixa { background: #0E425C; font-size: 12px; padding: 3px 10px; }
+  </style>
+</head>
+<body>
+  <calcite-shell>
+    <header slot="header">
+      <div class="topo">
+        <div>
+          <h1>Pergunte à fila</h1>
+          <p>Fiscalização do pavimento das pistas · protótipo de demonstração · Imagem Geosistemas</p>
+        </div>
+      </div>
+      <div class="faixa">Chat GIS da Esri (beta) sobre a fila · ICP, prioridade e vistorias fictícios · confira a resposta no mapa</div>
+    </header>
+
+    <div id="area-mapa" style="position: relative; height: 100%;">
+      <div id="aviso-login" role="dialog" aria-labelledby="t-login">
+        <div>
+          <h2 id="t-login">Entre com sua conta do ArcGIS Online</h2>
+          <p>O assistente de IA da Esri só funciona com usuário nomeado de uma organização ArcGIS Online
+            (não vale conta de avaliação nem conta pública).</p>
+          <calcite-button id="btn-login" width="full">Entrar</calcite-button>
+          <p id="erro-login" style="color:#c9302c; font-size: 13px;"></p>
+        </div>
+      </div>
+    </div>
+
+    <calcite-shell-panel slot="panel-end" width="l" id="painel-chat">
+      <calcite-panel id="lugar-chat"></calcite-panel>
+    </calcite-shell-panel>
+  </calcite-shell>
+
+  <script type="module">
+    const CFG = Object.assign({
+      // portal de entrada do login (ArcGIS Online)
+      portalUrl: "https://www.arcgis.com",
+      // ANAC Pistas - Mapa da fila (POC): só abre para usuário da organização que tiver acesso
+      webmapId: "588e51b1625b4d48be39d192cf6a6bce",
+      appId: ""   // Client ID do app registrado no ArcGIS Online; só no config.js do servidor
+    }, window.CHAT_CONFIG || {});
+    // ?webmap=<id> troca o mapa sem editar o arquivo (ex.: mapa de vistorias 3e6b4ab4190543d191e697af4d2de96e)
+    const qs = new URLSearchParams(location.search);
+    if (qs.get("webmap")) CFG.webmapId = qs.get("webmap");
+    if (qs.get("embed")) document.body.classList.add("embed");
+
+    // perguntas da proposta v2 (seção 2c), com os campos da regra da fila do capítulo 1 (acesso, ação, saiu por imagem)
+    const PERGUNTAS = [
+      "Quais aeródromos de acesso difícil estão há mais de 3 anos sem vistoria?",
+      "Quantos aeródromos saíram da fila por imagem, e quantos dias de viagem foram evitados?",
+      "Quais são os 5 primeiros da fila e qual a ação de cada um?",
+      "Quais aeródromos do Amazonas pedem imagem ao operador?",
+      "Leve o mapa até Fonte Boa."
+    ];
+
+    const [esriConfig, OAuthInfo, IdentityManager] = await $arcgis.import([
+      "@arcgis/core/config.js",
+      "@arcgis/core/identity/OAuthInfo.js",
+      "@arcgis/core/identity/IdentityManager.js"
+    ]);
+    esriConfig.portalUrl = CFG.portalUrl;
+    if (CFG.appId) {
+      IdentityManager.registerOAuthInfos([new OAuthInfo({ appId: CFG.appId, portalUrl: CFG.portalUrl, popup: false })]);
+    }
+    const sharing = CFG.portalUrl + "/sharing";
+
+    // guarda o login neste navegador para não pedir senha a cada abertura (o token da Esri vale até 2 semanas);
+    // fica só no armazenamento do navegador deste computador, não em arquivo
+    const CHAVE_LOGIN = "anac-pistas-chat-login";
+    try {
+      const salvo = localStorage.getItem(CHAVE_LOGIN);
+      if (salvo) IdentityManager.initialize(JSON.parse(salvo));
+    } catch { /* armazenamento indisponível ou login antigo: segue sem */ }
+    function guardarLogin() {
+      try { localStorage.setItem(CHAVE_LOGIN, JSON.stringify(IdentityManager.toJSON())); } catch { /* sem armazenamento */ }
+    }
+    IdentityManager.on("credential-create", guardarLogin);
+
+    function montar() {
+      const mapa = document.createElement("arcgis-map");
+      mapa.id = "mapa";
+      mapa.itemId = CFG.webmapId;
+      mapa.innerHTML = '<arcgis-zoom slot="top-left"></arcgis-zoom>' +
+        '<arcgis-home slot="top-left"></arcgis-home>' +
+        '<arcgis-expand slot="top-left" expand-tooltip="Legenda"><arcgis-legend></arcgis-legend></arcgis-expand>';
+      document.getElementById("area-mapa").appendChild(mapa);
+
+      const chat = document.createElement("arcgis-assistant");
+      chat.setAttribute("reference-element", "#mapa");
+      chat.setAttribute("copy-enabled", "");
+      chat.heading = "Pergunte à fila";
+      chat.description = "Pergunte sobre a fila de fiscalização: prioridade, motivo, dias sem vistoria, equipes e vistorias.";
+      chat.entryMessage = "Olá! Posso consultar a fila de fiscalização e levar o mapa a um aeródromo. ICP, prioridade e " +
+        "vistorias desta demonstração são fictícios.";
+      chat.innerHTML = "<arcgis-assistant-navigation-agent></arcgis-assistant-navigation-agent>" +
+        "<arcgis-assistant-data-exploration-agent></arcgis-assistant-data-exploration-agent>" +
+        "<arcgis-assistant-help-agent></arcgis-assistant-help-agent>";
+      chat.suggestedPrompts = PERGUNTAS;
+      document.getElementById("lugar-chat").appendChild(chat);
+    }
+
+    async function entrar() {
+      document.getElementById("erro-login").textContent = "";
+      // a janela de login do SDK abre por baixo do aviso: esconde o aviso antes
+      document.getElementById("aviso-login").style.display = "none";
+      try {
+        await IdentityManager.getCredential(sharing);
+        montar();
+      } catch (e) {
+        document.getElementById("aviso-login").style.display = "flex";
+        document.getElementById("erro-login").textContent = "Não foi possível entrar: " + (e.message || e);
+      }
+    }
+
+    // a IA exige usuário logado mesmo com mapa público: confere a sessão antes de montar mapa e chat
+    try {
+      await IdentityManager.checkSignInStatus(sharing);
+      guardarLogin();
+      montar();
+    } catch {
+      document.getElementById("aviso-login").style.display = "flex";
+      document.getElementById("btn-login").addEventListener("click", entrar);
+    }
+  </script>
+</body>
+</html>
