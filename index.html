@@ -88,7 +88,7 @@
       "Quais aeródromos do Amazonas pedem imagem ao operador?",
       "Leve o mapa até Fonte Boa."
     ];
-    // dentro do app (?embed=1) o chat tem uns 300 px de altura: sem título, sem boas-vindas e com perguntas curtas, para a caixa de digitar ficar à vista;
+    // dentro do app (?embed=1) o chat tem uns 300 px de altura: sem descrição, sem boas-vindas e com perguntas curtas, para a caixa de digitar ficar à vista;
     // as sugestões somem depois da primeira pergunta, para a resposta ter espaço
     const EMBED = !!qs.get("embed");
     const PERGUNTAS_CURTAS = [
@@ -134,10 +134,8 @@
       const chat = document.createElement("arcgis-assistant");
       chat.setAttribute("reference-element", "#mapa");
       chat.setAttribute("copy-enabled", "");
-      if (!EMBED) {
-        chat.heading = "Pergunte à fila";
-        chat.description = "Pergunte sobre a fila de fiscalização: prioridade, motivo, dias sem vistoria, equipes e vistorias.";
-      }
+      chat.heading = "Pergunte à fila";   // sem título o componente escreve "Assistente"
+      if (!EMBED) chat.description = "Pergunte sobre a fila de fiscalização: prioridade, motivo, dias sem vistoria, equipes e vistorias.";
       // dentro do app a faixa de cima já avisa que os dados são fictícios; a mensagem de boas-vindas tomaria a altura da caixa de digitar
       if (!EMBED) chat.entryMessage = "Olá! Posso consultar a fila de fiscalização e levar o mapa a um aeródromo. ICP, prioridade e " +
         "vistorias desta demonstração são fictícios.";
