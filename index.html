@@ -82,9 +82,9 @@
 
     // perguntas da proposta v2 (seção 2c), com os campos da regra da fila do capítulo 1 (acesso, ação, saiu por imagem)
     const PERGUNTAS = [
-      "Quais aeródromos de acesso difícil estão há mais de 3 anos sem vistoria?",
+      "Quais aeródromos (nome e UF) de acesso difícil estão há mais de 3 anos sem vistoria?",
       "Quantos aeródromos saíram da fila por imagem, e quantos dias de viagem foram evitados?",
-      "Quais são os 5 primeiros da fila e qual a ação de cada um?",
+      "Quais são os 5 primeiros da fila (nome e UF) e qual a ação de cada um?",
       "Quais aeródromos do Amazonas pedem imagem ao operador?",
       "Leve o mapa até Fonte Boa."
     ];
@@ -92,10 +92,10 @@
     // as sugestões somem depois da primeira pergunta, para a resposta ter espaço
     const EMBED = !!qs.get("embed");
     const PERGUNTAS_CURTAS = [
-      "Os 5 primeiros da fila e a ação de cada um",
+      "Nome e ação dos 5 primeiros da fila",
       "Quantos saíram da fila por imagem?",
       "Amazonas: quais pedem imagem?",
-      "Acesso difícil e mais de 3 anos sem vistoria",
+      "Nome dos de acesso difícil há mais de 3 anos sem vistoria",
       "Leve o mapa até Fonte Boa"
     ];
 
