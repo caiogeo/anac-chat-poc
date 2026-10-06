@@ -70,8 +70,9 @@
     const CFG = Object.assign({
       // portal de entrada do login (ArcGIS Online)
       portalUrl: "https://www.arcgis.com",
-      // ANAC Pistas - Mapa da fila (POC): só abre para usuário da organização que tiver acesso
-      webmapId: "588e51b1625b4d48be39d192cf6a6bce",
+      // ANAC Pistas - Mapa do chat (POC), 06/10/2026: a fila uma vez só e campos descritos (14_chat.py); só abre para usuário da
+      // organização que tiver acesso. O mapa da fila do app (588e51b1...) tinha a fila duas vezes e o assistente perguntava qual usar
+      webmapId: "d3163344c855485db96c12b7f0ba53a5",
       appId: ""   // Client ID do app registrado no ArcGIS Online; só no config.js do servidor
     }, window.CHAT_CONFIG || {});
     // ?webmap=<id> troca o mapa sem editar o arquivo (ex.: mapa de vistorias 3e6b4ab4190543d191e697af4d2de96e)
@@ -86,6 +87,16 @@
       "Quais são os 5 primeiros da fila e qual a ação de cada um?",
       "Quais aeródromos do Amazonas pedem imagem ao operador?",
       "Leve o mapa até Fonte Boa."
+    ];
+    // dentro do app (?embed=1) o chat tem uns 300 px de altura: sem título, sem boas-vindas e com perguntas curtas, para a caixa de digitar ficar à vista;
+    // as sugestões somem depois da primeira pergunta, para a resposta ter espaço
+    const EMBED = !!qs.get("embed");
+    const PERGUNTAS_CURTAS = [
+      "Os 5 primeiros da fila e a ação de cada um",
+      "Quantos saíram da fila por imagem?",
+      "Amazonas: quais pedem imagem?",
+      "Acesso difícil e mais de 3 anos sem vistoria",
+      "Leve o mapa até Fonte Boa"
     ];
 
     const [esriConfig, OAuthInfo, IdentityManager] = await $arcgis.import([
@@ -123,14 +134,18 @@
       const chat = document.createElement("arcgis-assistant");
       chat.setAttribute("reference-element", "#mapa");
       chat.setAttribute("copy-enabled", "");
-      chat.heading = "Pergunte à fila";
-      chat.description = "Pergunte sobre a fila de fiscalização: prioridade, motivo, dias sem vistoria, equipes e vistorias.";
-      chat.entryMessage = "Olá! Posso consultar a fila de fiscalização e levar o mapa a um aeródromo. ICP, prioridade e " +
+      if (!EMBED) {
+        chat.heading = "Pergunte à fila";
+        chat.description = "Pergunte sobre a fila de fiscalização: prioridade, motivo, dias sem vistoria, equipes e vistorias.";
+      }
+      // dentro do app a faixa de cima já avisa que os dados são fictícios; a mensagem de boas-vindas tomaria a altura da caixa de digitar
+      if (!EMBED) chat.entryMessage = "Olá! Posso consultar a fila de fiscalização e levar o mapa a um aeródromo. ICP, prioridade e " +
         "vistorias desta demonstração são fictícios.";
       chat.innerHTML = "<arcgis-assistant-navigation-agent></arcgis-assistant-navigation-agent>" +
         "<arcgis-assistant-data-exploration-agent></arcgis-assistant-data-exploration-agent>" +
         "<arcgis-assistant-help-agent></arcgis-assistant-help-agent>";
-      chat.suggestedPrompts = PERGUNTAS;
+      chat.suggestedPrompts = EMBED ? PERGUNTAS_CURTAS : PERGUNTAS;
+      if (EMBED) chat.addEventListener("arcgisSubmit", () => { chat.suggestedPrompts = []; });
       document.getElementById("lugar-chat").appendChild(chat);
     }
 
